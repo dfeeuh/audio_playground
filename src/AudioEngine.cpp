@@ -37,7 +37,9 @@ AudioEngine::~AudioEngine()
 }
 
 
-static void errorCallback(RtAudioError::Type type, const std::string &errorText)
+static void errorCallback(
+    RtAudioError::Type type, 
+    const std::string &errorText)
 {
     // This example error handling function does exactly the same thing
     // as the embedded RtAudio::error() function.
@@ -50,10 +52,15 @@ static void errorCallback(RtAudioError::Type type, const std::string &errorText)
 }
 
 // Interleaved buffers
-static int audio_callback(void *outputBuffer, void *inputBuffer, unsigned int nBufferFrames,
-        double streamTime, RtAudioStreamStatus status, void *data)
+static int audio_callback(
+    void *outputBuffer, 
+    void *inputBuffer, 
+    unsigned nBufferFrames,
+    double streamTime, 
+    RtAudioStreamStatus status, 
+    void *data)
 {
-    unsigned int i, j;
+    unsigned i, j;
     MY_TYPE *buffer = (MY_TYPE *)outputBuffer;
     AudioEngine *engine = (AudioEngine *)data;
     double *lastValues = engine->data;
