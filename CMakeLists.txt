@@ -10,8 +10,9 @@ set(CMAKE_CXX_STANDARD 17)
 # Check for Jack (any OS)
 #find_library(RTAUDIO rtaudio)
 find_package(rtaudio REQUIRED)
+find_library(RTAUDIO rtaudio)
 if (rtaudio_FOUND)
-  message(STATUS "RTAudio include: ${rtaudio_DIR}")
+  message(STATUS "RTAudio include: ${rtaudio_DIR}, ${RTAUDIO}")
 
   add_executable(playsaw 
     ${PROJECT_SOURCE_DIR}/src/main.cpp

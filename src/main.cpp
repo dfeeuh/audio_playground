@@ -32,7 +32,14 @@ int main(int argc, char *argv[])
 
     std::cout << "Starting...";
 
-    AudioEngine audio;
+    unsigned nChannels = 2;
+    unsigned sampleRate = 44100;
+    unsigned frameSize = 512;
+
+    SawWaveform saw(nChannels);
+    AudioEngine audio(nChannels, sampleRate, frameSize);
+
+    audio.connect(&saw);
 
     if (audio.start() != 0)
     {

@@ -1,15 +1,12 @@
 #include "AudioEngine.hpp"
 
-AudioEngine::AudioEngine(unsigned nChans, unsigned fs)
+AudioEngine::AudioEngine(unsigned nChans, unsigned fs, unsigned framesPerBuf) : frameCounter{0},
+                                                                                checkCount{false},
+                                                                                channels{nChans},
+                                                                                sampleRate{fs},
+                                                                                bufferFrames{framesPerBuf}, // Set our stream parameters for output only.
+                                                                                modules{nullptr}
 {
-    frameCounter = 0;
-    checkCount = false;
-    nFrames = 0;
-    channels = nChans;
-    sampleRate = fs;
-
-    data = (double *)calloc(channels, sizeof(double));
-
     if (dac.getDeviceCount() < 1)
     {
         std::cout << "\nNo audio devices found!\n";
@@ -18,9 +15,6 @@ AudioEngine::AudioEngine(unsigned nChans, unsigned fs)
 
     // Let RtAudio print messages to stderr.
     dac.showWarnings(true);
-
-    // Set our stream parameters for output only.
-    bufferFrames = 512;
 
     // Currently selecting a default device
     oParams.deviceId = oParams.deviceId = dac.getDefaultOutputDevice();
@@ -32,13 +26,10 @@ AudioEngine::~AudioEngine()
 {
     if (dac.isStreamOpen())
         dac.closeStream();
-    if (data != nullptr)
-        free(data);
 }
 
-
 static void errorCallback(
-    RtAudioError::Type type, 
+    RtAudioError::Type type,
     const std::string &errorText)
 {
     // This example error handling function does exactly the same thing
@@ -46,36 +37,36 @@ static void errorCallback(
     std::cout << "in errorCallback" << std::endl;
     if (type == RtAudioError::WARNING)
         std::cerr << '\n'
-                    << errorText << "\n\n";
+                  << errorText << "\n\n";
     else if (type != RtAudioError::WARNING)
         throw(RtAudioError(errorText, type));
 }
 
 // Interleaved buffers
 static int audio_callback(
-    void *outputBuffer, 
-    void *inputBuffer, 
+    void *outputBuffer,
+    void *inputBuffer,
     unsigned nBufferFrames,
-    double streamTime, 
-    RtAudioStreamStatus status, 
+    double streamTime,
+    RtAudioStreamStatus status,
     void *data)
 {
-    unsigned i, j;
-    MY_TYPE *buffer = (MY_TYPE *)outputBuffer;
     AudioEngine *engine = (AudioEngine *)data;
-    double *lastValues = engine->data;
 
     if (status)
         std::cout << "Stream underflow detected!" << std::endl;
 
-    for (i = 0; i < nBufferFrames; i++)
+    if (engine->getModule() != nullptr)
     {
-        for (j = 0; j < engine->channels; j++)
+        engine->getModule()->process((MY_TYPE *)outputBuffer, (MY_TYPE *)inputBuffer, nBufferFrames);
+    }
+    else
+    {
+        // No modules registered, output zeroes
+        MY_TYPE *buffer = (MY_TYPE *)outputBuffer;
+        for (size_t i = 0; i < nBufferFrames * engine->channels; i++)
         {
-            *buffer++ = (MY_TYPE)(lastValues[j] * SCALE * 0.5);
-            lastValues[j] += BASE_RATE * (j + 1 + (j * 0.1));
-            if (lastValues[j] >= 1.0)
-                lastValues[j] -= 2.0;
+            *buffer++ = 0;
         }
     }
 
@@ -90,9 +81,9 @@ int AudioEngine::start()
 {
     try
     {
-        dac.openStream(&oParams, 
-            NULL, FORMAT, sampleRate, &bufferFrames, 
-            &audio_callback, (void *)this, &options, &errorCallback);
+        dac.openStream(&oParams,
+                       NULL, FORMAT, sampleRate, &bufferFrames,
+                       &audio_callback, (void *)this, &options, &errorCallback);
 
         dac.startStream();
     }
@@ -116,4 +107,15 @@ void AudioEngine::stop()
     {
         e.printMessage();
     }
+}
+
+void AudioEngine::connect(AudioModule *pMod)
+{
+    auto **p=&modules;
+    
+    while (*p != nullptr) {
+        *p = (*p)->getNext();
+    }
+    
+    *p = pMod;
 }

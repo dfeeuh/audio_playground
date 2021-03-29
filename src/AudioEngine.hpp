@@ -41,6 +41,51 @@ typedef double MY_TYPE;
 #define BASE_RATE 0.005
 #define TIME 1.0
 
+class AudioModule
+{
+protected:
+    size_t nChans_;
+    AudioModule *pNext = nullptr;
+
+public:
+    AudioModule(size_t numChannels) { nChans_ = numChannels; }
+
+    virtual void process(MY_TYPE *inputBuffer, MY_TYPE *outputBuffer, size_t numFrames) = 0;
+
+    void connect(AudioModule *p) { pNext = p; }
+    AudioModule *getNext() { return pNext; }
+};
+
+class SawWaveform : public AudioModule
+{
+    double *lastValues_;
+
+public:
+    SawWaveform(size_t numChannels) : AudioModule{numChannels}
+    {
+        lastValues_ = (double *)calloc(numChannels, sizeof(double));
+    }
+
+    ~SawWaveform() { free(lastValues_); }
+
+    void process(MY_TYPE *outputBuffer, MY_TYPE *inputBuffer, size_t numFrames)
+    {
+        for (size_t i = 0; i < numFrames; i++)
+        {
+            for (size_t j = 0; j < nChans_; j++)
+            {
+                *outputBuffer++ = (MY_TYPE)(lastValues_[j] * SCALE * 0.5);
+                lastValues_[j] += BASE_RATE * (j + 1 + (j * 0.1));
+                if (lastValues_[j] >= 1.0)
+                    lastValues_[j] -= 2.0;
+            }
+        }
+
+        if (pNext != nullptr)
+            pNext->process(outputBuffer, inputBuffer, numFrames);
+    }
+};
+
 class AudioEngine
 {
 private:
@@ -50,16 +95,20 @@ private:
     unsigned bufferFrames;
     unsigned sampleRate;
 
+    AudioModule *modules;
+
 public:
     unsigned channels;
     const unsigned callbackReturnValue = 1;
-    double *data = nullptr;
     unsigned frameCounter;
     bool checkCount;
     unsigned nFrames;
 
-    AudioEngine(unsigned nChans = 2, unsigned fs = 44100);
+    AudioEngine(unsigned nChans, unsigned fs, unsigned framesPerBuf);
     ~AudioEngine();
+
+    void connect(AudioModule *pMod);
+    AudioModule *getModule() { return modules; }
 
     int start();
     void stop();
