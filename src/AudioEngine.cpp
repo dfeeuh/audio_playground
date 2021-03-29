@@ -1,16 +1,17 @@
 #include "AudioEngine.hpp"
 
-AudioEngine::AudioEngine(unsigned nChans, unsigned fs, unsigned framesPerBuf) : frameCounter{0},
-                                                                                checkCount{false},
-                                                                                channels{nChans},
-                                                                                sampleRate{fs},
-                                                                                bufferFrames{framesPerBuf}, // Set our stream parameters for output only.
-                                                                                modules{nullptr}
+AudioEngine::AudioEngine(unsigned nChans, unsigned fs, unsigned framesPerBuf) : 
+    frameCounter{0},
+    checkCount{false},
+    channels{nChans},
+    sampleRate{fs},
+    bufferFrames{framesPerBuf}, // Set our stream parameters for output only.
+    modules{nullptr}
 {
     if (dac.getDeviceCount() < 1)
     {
         std::cout << "\nNo audio devices found!\n";
-        exit(1);
+        return;
     }
 
     // Let RtAudio print messages to stderr.
@@ -51,16 +52,12 @@ static int audio_callback(
     RtAudioStreamStatus status,
     void *data)
 {
-    AudioEngine *engine = (AudioEngine *)data;
+    auto *engine = (AudioEngine *)data;
 
     if (status)
         std::cout << "Stream underflow detected!" << std::endl;
 
-    if (engine->getModule() != nullptr)
-    {
-        engine->getModule()->process((MY_TYPE *)outputBuffer, (MY_TYPE *)inputBuffer, nBufferFrames);
-    }
-    else
+    if (engine->getModule() == nullptr)
     {
         // No modules registered, output zeroes
         MY_TYPE *buffer = (MY_TYPE *)outputBuffer;
@@ -69,7 +66,13 @@ static int audio_callback(
             *buffer++ = 0;
         }
     }
+    else
+    {
+        engine->getModule()->process((MY_TYPE *)outputBuffer, (MY_TYPE *)inputBuffer, nBufferFrames);
+    }
 
+    // This stops the audio thread after a finite number of frames. Not sure
+    // it's needed...
     engine->frameCounter += nBufferFrames;
     if (engine->checkCount && (engine->frameCounter >= engine->nFrames))
         return engine->callbackReturnValue;
@@ -100,7 +103,6 @@ void AudioEngine::stop()
 {
     try
     {
-        // Stop the stream
         dac.stopStream();
     }
     catch (RtAudioError &e)
