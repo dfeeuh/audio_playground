@@ -7,21 +7,14 @@ project(audio_engine LANGUAGES CXX)
 # standards version
 set(CMAKE_CXX_STANDARD 17)
 
-# Check for Jack (any OS)
-#find_library(RTAUDIO rtaudio)
-find_package(rtaudio REQUIRED)
-find_library(RTAUDIO rtaudio)
-if (rtaudio_FOUND)
-  message(STATUS "RTAudio include: ${rtaudio_DIR}, ${RTAUDIO}")
+add_subdirectory(libs/AudioEngine)
 
-  add_executable(playsaw 
-    ${PROJECT_SOURCE_DIR}/src/main.cpp
-    ${PROJECT_SOURCE_DIR}/src/AudioEngine.cpp)
+add_executable(playsaw 
+    ${PROJECT_SOURCE_DIR}/src/main.cpp)
 
-  target_include_directories(playsaw PUBLIC ${rtaudio_DIR}/../../include/rtaudio)
-  target_link_libraries(playsaw ${RTAUDIO})
+target_link_libraries(playsaw PUBLIC AudioEngine)
 
-else ()
-  message(WARNING "Could not find RTAUDIO SDK")
-endif ()
+target_include_directories(playsaw PUBLIC
+                          "${PROJECT_SOURCE_DIR}/libs/AudioEngine"
+                          )
 

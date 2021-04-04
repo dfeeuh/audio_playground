@@ -8,25 +8,29 @@ AudioEngine::AudioEngine(unsigned nChans, unsigned fs, unsigned framesPerBuf) :
     bufferFrames{framesPerBuf}, // Set our stream parameters for output only.
     modules{nullptr}
 {
-    if (dac.getDeviceCount() < 1)
+    if (rtaudio.getDeviceCount() < 1)
     {
         std::cout << "\nNo audio devices found!\n";
         return;
     }
 
     // Let RtAudio print messages to stderr.
-    dac.showWarnings(true);
+    rtaudio.showWarnings(true);
+
+    // iParams.deviceId = rtaudio.getDefaultInputDevice();
+    // iParams.nChannels = channels;
+    // iParams.firstChannel = 0;
 
     // Currently selecting a default device
-    oParams.deviceId = oParams.deviceId = dac.getDefaultOutputDevice();
+    oParams.deviceId = rtaudio.getDefaultOutputDevice();
     oParams.nChannels = channels;
     oParams.firstChannel = 0;
 }
 
 AudioEngine::~AudioEngine()
 {
-    if (dac.isStreamOpen())
-        dac.closeStream();
+    if (rtaudio.isStreamOpen())
+        rtaudio.closeStream();
 }
 
 static void errorCallback(
@@ -46,7 +50,7 @@ static void errorCallback(
 // Interleaved buffers
 static int audio_callback(
     void *outputBuffer,
-    void *inputBuffer,
+    void * /*inputBuffer*/,
     unsigned nBufferFrames,
     double streamTime,
     RtAudioStreamStatus status,
@@ -56,19 +60,34 @@ static int audio_callback(
 
     if (status)
         std::cout << "Stream underflow detected!" << std::endl;
+        
+    auto module = engine->getModule();
 
-    if (engine->getModule() == nullptr)
+    if (module == nullptr)
     {
         // No modules registered, output zeroes
-        MY_TYPE *buffer = (MY_TYPE *)outputBuffer;
-        for (size_t i = 0; i < nBufferFrames * engine->channels; i++)
-        {
-            *buffer++ = 0;
-        }
+        std::memset(outputBuffer, 0, sizeof(AUDIO_FORMAT_TYPE) * nBufferFrames * engine->channels);
     }
     else
     {
-        engine->getModule()->process((MY_TYPE *)outputBuffer, (MY_TYPE *)inputBuffer, nBufferFrames);
+        // void *outBufferAddress = outputBuffer;
+
+        while (true)
+        {
+            //module->process((AUDIO_FORMAT_TYPE *)outputBuffer, (AUDIO_FORMAT_TYPE *)inputBuffer, nBufferFrames);
+            module->process((AUDIO_FORMAT_TYPE *)outputBuffer, (AUDIO_FORMAT_TYPE *)outputBuffer, nBufferFrames);
+            module = module->getNext();
+
+            if (module == nullptr)
+                break;
+
+            // Swap buffers here
+            //std::swap(outputBuffer, inputBuffer);
+        }
+
+        // if (outBufferAddress != outputBuffer)
+        //     // Copy the contents of outputBuffer to the actual output buffer.
+        //     std::memcpy(outBufferAddress, outputBuffer, sizeof(AUDIO_FORMAT_TYPE)*nBufferFrames*engine->channels);
     }
 
     // This stops the audio thread after a finite number of frames. Not sure
@@ -84,11 +103,11 @@ int AudioEngine::start()
 {
     try
     {
-        dac.openStream(&oParams,
-                       NULL, FORMAT, sampleRate, &bufferFrames,
+        rtaudio.openStream(&oParams,
+                       nullptr, FORMAT, sampleRate, &bufferFrames,
                        &audio_callback, (void *)this, &options, &errorCallback);
 
-        dac.startStream();
+        rtaudio.startStream();
     }
     catch (RtAudioError &e)
     {
@@ -103,7 +122,7 @@ void AudioEngine::stop()
 {
     try
     {
-        dac.stopStream();
+        rtaudio.stopStream();
     }
     catch (RtAudioError &e)
     {

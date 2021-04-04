@@ -8,6 +8,7 @@
 */
 /******************************************/
 #include "AudioEngine.hpp"
+#include "Modules.hpp"
 #include <iostream>
 #include <cstdlib>
 
@@ -37,6 +38,9 @@ int main(int argc, char *argv[])
     unsigned frameSize = 512;
 
     SawWaveform saw(nChannels);
+    Gain g(nChannels, 0.1f);
+    saw.connect(&g);
+
     AudioEngine audio(nChannels, sampleRate, frameSize);
 
     audio.connect(&saw);
@@ -50,7 +54,19 @@ int main(int argc, char *argv[])
     char input;
     //std::cout << "Stream latency = " << dac.getStreamLatency() << "\n" << std::endl;
     std::cout << "\nPlaying ... press <enter> to quit (buffer size = " << bufferFrames << ").\n";
-    std::cin.get(input);
+
+    float a = 0;
+    while(a>=0){
+        std::cout << "Set gain value: ";
+        std::cin >> a;
+
+        if (a < 0)
+            break;
+
+        g.update(a);
+    }
+
+    std::cout << "Quitting...\n";
 
     audio.stop();
     
