@@ -1,74 +1,104 @@
-/******************************************/
 /*
-  playsaw.cpp
-  by Gary P. Scavone, 2006
+  ==============================================================================
 
-  This program will output sawtooth waveforms
-  of different frequencies on each channel.
+    This file contains the basic startup code for a JUCE application.
+
+  ==============================================================================
 */
-/******************************************/
-#include "AudioEngine.hpp"
-#include "Modules.hpp"
-#include <iostream>
-#include <cstdlib>
+#include "MainComponent.h"
 
 
-void usage(void)
+//==============================================================================
+class AudioPlaygroundGUIApplication  : public juce::JUCEApplication
 {
-    // Error function in case of incorrect command-line
-    // argument specifications
-    std::cout << "\nuseage: playsaw N fs <device> <channelOffset> <time>\n";
-    std::cout << "    where N = number of channels,\n";
-    std::cout << "    fs = the sample rate,\n";
-    std::cout << "    device = optional device to use (default = 0),\n";
-    std::cout << "    channelOffset = an optional channel offset on the device (default = 0),\n";
-    std::cout << "    and time = an optional time duration in seconds (default = no limit).\n\n";
-    exit(0);
-}
+public:
+    //==============================================================================
+    AudioPlaygroundGUIApplication() {}
 
+    const juce::String getApplicationName() override       { return JUCE_APPLICATION_NAME_STRING; }
+    const juce::String getApplicationVersion() override    { return JUCE_APPLICATION_VERSION_STRING; }
+    bool moreThanOneInstanceAllowed() override             { return true; }
 
-int main(int argc, char *argv[])
-{
-    unsigned bufferFrames = 0;
-
-    std::cout << "Starting...";
-
-    unsigned nChannels = 2;
-    unsigned sampleRate = 44100;
-    unsigned frameSize = 512;
-
-    SawWaveform saw(nChannels);
-    Gain g(nChannels, 0.1f);
-    saw.connect(&g);
-
-    AudioEngine audio(nChannels, sampleRate, frameSize);
-
-    audio.connect(&saw);
-
-    if (audio.start() != 0)
+    //==============================================================================
+    void initialise (const juce::String& commandLine) override
     {
-        std::cout << "Failed to start...";
-        return 0;
+        // This method is where you should put your application's initialisation code..
+
+        mainWindow.reset (new MainWindow (getApplicationName()));
     }
 
-    char input;
-    //std::cout << "Stream latency = " << dac.getStreamLatency() << "\n" << std::endl;
-    std::cout << "\nPlaying ... press <enter> to quit (buffer size = " << bufferFrames << ").\n";
+    void shutdown() override
+    {
+        // Add your application's shutdown code here..
 
-    float a = 0;
-    while(a>=0){
-        std::cout << "Set gain value: ";
-        std::cin >> a;
-
-        if (a < 0)
-            break;
-
-        g.update(a);
+        mainWindow = nullptr; // (deletes our window)
     }
 
-    std::cout << "Quitting...\n";
+    //==============================================================================
+    void systemRequestedQuit() override
+    {
+        // This is called when the app is being asked to quit: you can ignore this
+        // request and let the app carry on running, or call quit() to allow the app to close.
+        quit();
+    }
 
-    audio.stop();
-    
-    return 0;
-}
+    void anotherInstanceStarted (const juce::String& commandLine) override
+    {
+        // When another instance of the app is launched while this one is running,
+        // this method is invoked, and the commandLine parameter tells you what
+        // the other instance's command-line arguments were.
+    }
+
+    //==============================================================================
+    /*
+        This class implements the desktop window that contains an instance of
+        our MainComponent class.
+    */
+    class MainWindow    : public juce::DocumentWindow
+    {
+    public:
+        MainWindow (juce::String name)
+            : DocumentWindow (name,
+                              juce::Desktop::getInstance().getDefaultLookAndFeel()
+                                                          .findColour (juce::ResizableWindow::backgroundColourId),
+                              DocumentWindow::allButtons)
+        {
+            setUsingNativeTitleBar (true);
+            setContentOwned (new MainComponent(), true);
+
+           #if JUCE_IOS || JUCE_ANDROID
+            setFullScreen (true);
+           #else
+            setResizable (true, true);
+            centreWithSize (getWidth(), getHeight());
+           #endif
+
+            setVisible (true);
+        }
+
+        void closeButtonPressed() override
+        {
+            // This is called when the user tries to close this window. Here, we'll just
+            // ask the app to quit when this happens, but you can change this to do
+            // whatever you need.
+            JUCEApplication::getInstance()->systemRequestedQuit();
+        }
+
+        /* Note: Be careful if you override any DocumentWindow methods - the base
+           class uses a lot of them, so by overriding you might break its functionality.
+           It's best to do all your work in your content component instead, but if
+           you really have to override any DocumentWindow methods, make sure your
+           subclass also calls the superclass's method.
+        */
+
+    private:
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainWindow)
+    };
+
+private:
+    std::unique_ptr<MainWindow> mainWindow;
+};
+
+//==============================================================================
+// This macro generates the main() routine that launches the app.
+START_JUCE_APPLICATION (AudioPlaygroundGUIApplication)

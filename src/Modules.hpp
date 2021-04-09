@@ -24,6 +24,8 @@ public:
 
     void process(AUDIO_FORMAT_TYPE *outputBuffer, AUDIO_FORMAT_TYPE *inputBuffer, unsigned numFrames)
     {
+        (void)inputBuffer;
+
         auto g = gain_.load();
         for (unsigned i = 0; i < nChans_ * numFrames; i++)
         {
@@ -54,6 +56,7 @@ public:
 
     void process(AUDIO_FORMAT_TYPE *outputBuffer, AUDIO_FORMAT_TYPE *inputBuffer, unsigned numFrames)
     {
+        (void)inputBuffer;
         for (unsigned i = 0; i < numFrames; i++)
         {
             for (unsigned j = 0; j < nChans_; j++)
