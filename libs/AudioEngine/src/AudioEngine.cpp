@@ -130,13 +130,7 @@ void AudioEngine::stop()
     }
 }
 
-void AudioEngine::connect(AudioModule *pMod)
+void AudioEngine::connect(std::shared_ptr<AudioModule> mod)
 {
-    auto **p=&modules;
-    
-    while (*p != nullptr) {
-        *p = (*p)->getNext();
-    }
-    
-    *p = pMod;
+    modules = mod;
 }

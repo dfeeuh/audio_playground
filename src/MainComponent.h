@@ -19,7 +19,6 @@ class MainComponent  : public juce::Component
 public:
     //==============================================================================
     MainComponent();
-    ~MainComponent() override;
 
     //==============================================================================
     void paint (juce::Graphics&) override;
@@ -31,9 +30,9 @@ private:
     //SlidersPage sliders;
     juce::Slider gainSlider;
 
-    SawWaveform *saw;
-    Gain *g;
-    AudioEngine *audio;
+    std::shared_ptr<SawWaveform> saw;
+    std::shared_ptr<Gain> gain;
+    std::unique_ptr<AudioEngine> audio;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

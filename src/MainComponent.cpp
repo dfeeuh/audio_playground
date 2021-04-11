@@ -11,12 +11,12 @@ MainComponent::MainComponent()
     unsigned sampleRate = 44100;
     unsigned frameSize = 512;
 
-    saw = new SawWaveform(nChannels);
-    g = new Gain(nChannels, 0.1f);
+    saw = std::make_shared<SawWaveform>(nChannels);
+    gain = std::make_shared<Gain>(nChannels, 0.1f);
     
-    saw->connect(g);
+    saw->connect(gain);
 
-    audio = new AudioEngine(nChannels, sampleRate, frameSize);
+    audio = std::make_unique<AudioEngine>(nChannels, sampleRate, frameSize);
     if (audio != nullptr)
     {
         audio->connect(saw);
@@ -42,21 +42,9 @@ MainComponent::MainComponent()
     gainSlider.setDoubleClickReturnValue (true, 50.0); // double-clicking this gainSlider will set it to 50.0
     gainSlider.setTextValueSuffix (" units");
 
-    gainSlider.onValueChange = [this] { g->update(gainSlider.getValue()); };
+    gainSlider.onValueChange = [this] { gain->update((AUDIO_FORMAT_TYPE)gainSlider.getValue()); };
     gainSlider.setValue (0);
-    g->update(gainSlider.getValue());
-}
-
-MainComponent::~MainComponent()
-{
-    if (audio != nullptr)
-    {
-        audio->stop();
-        delete audio;
-    }
-
-    delete saw;
-    delete g;
+    gain->update((AUDIO_FORMAT_TYPE)gainSlider.getValue());
 }
 
 //==============================================================================

@@ -27,7 +27,7 @@ private:
     unsigned bufferFrames;
     unsigned sampleRate;
 
-    AudioModule *modules;
+    std::shared_ptr<AudioModule> modules;
 
 public:
     unsigned channels;
@@ -39,8 +39,9 @@ public:
     AudioEngine(unsigned nChans, unsigned fs, unsigned framesPerBuf);
     ~AudioEngine();
 
-    void connect(AudioModule *pMod);
-    AudioModule *getModule() { return modules; }
+    // Connect the first beginning of the signal chain 
+    void connect(std::shared_ptr<AudioModule> mod);
+    std::shared_ptr<AudioModule> getModule() { return modules; }
 
     int start();
     void stop();

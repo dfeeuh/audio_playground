@@ -23,7 +23,7 @@ typedef signed long AUDIO_FORMAT_TYPE;
 */
 typedef float AUDIO_FORMAT_TYPE;
 #define FORMAT RTAUDIO_FLOAT32
-#define SCALE  1.0
+#define SCALE  1.0f
 /*
 typedef double AUDIO_FORMAT_TYPE;
 #define FORMAT RTAUDIO_FLOAT64
