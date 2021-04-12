@@ -30,7 +30,8 @@ private:
     //SlidersPage sliders;
     juce::Slider gainSlider;
 
-    std::shared_ptr<SawWaveform> saw;
+    //std::shared_ptr<SawWaveform> saw;
+    std::shared_ptr<SineWaveform> sine;
     std::shared_ptr<Gain> gain;
     std::unique_ptr<AudioEngine> audio;
 

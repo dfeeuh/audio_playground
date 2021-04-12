@@ -11,15 +11,15 @@ MainComponent::MainComponent()
     unsigned sampleRate = 44100;
     unsigned frameSize = 512;
 
-    saw = std::make_shared<SawWaveform>(nChannels);
+    sine = std::make_shared<SineWaveform>(nChannels);
     gain = std::make_shared<Gain>(nChannels, 0.1f);
     
-    saw->connect(gain);
+    sine->connect(gain);
 
     audio = std::make_unique<AudioEngine>(nChannels, sampleRate, frameSize);
     if (audio != nullptr)
     {
-        audio->connect(saw);
+        audio->connect(sine);
 
         if (audio->start() != 0)
         {
