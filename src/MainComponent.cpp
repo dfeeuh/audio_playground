@@ -11,7 +11,7 @@ MainComponent::MainComponent()
     unsigned sampleRate = 44100;
     unsigned frameSize = 512;
 
-    sine = std::make_shared<SineWaveform>(nChannels);
+    sine = std::make_shared<SineWaveform>(nChannels, sampleRate);
     gain = std::make_shared<Gain>(nChannels, 0.1f);
     
     sine->connect(gain);
@@ -28,6 +28,23 @@ MainComponent::MainComponent()
     }
 
     // Add GUI elements here
+    juce::Rectangle<int> layoutArea { 20, 20, 580, 430 };
+    auto sliderArea = layoutArea.removeFromTop (320);
+
+
+    addAndMakeVisible(freqSlider);
+    freqSlider.setRange(100.f, 10000.f);
+    freqSlider.setSkewFactor(0.5f);
+    freqSlider.setSliderStyle (juce::Slider::LinearVertical);
+    freqSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 50, 20);
+    freqSlider.setBounds (sliderArea.removeFromLeft (70));
+    freqSlider.setDoubleClickReturnValue (true, 440.0); // double-clicking this freqSlider will set it to 440.0
+    freqSlider.setTextValueSuffix (" Hz");
+    freqSlider.onValueChange = [this] { sine->update((float)freqSlider.getValue()); };
+    freqSlider.setValue (440.f);
+
+
+    // Gain
     addAndMakeVisible (gainSlider);
     gainSlider.setRange (0.0, 1.0, 0.1);
     gainSlider.setPopupMenuEnabled (true);
@@ -35,8 +52,6 @@ MainComponent::MainComponent()
     gainSlider.setSliderStyle (juce::Slider::LinearVertical);
     gainSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 100, 20);
 
-    juce::Rectangle<int> layoutArea { 20, 20, 580, 430 };
-    auto sliderArea = layoutArea.removeFromTop (320);
 
     gainSlider.setBounds (sliderArea.removeFromLeft (70));
     gainSlider.setDoubleClickReturnValue (true, 50.0); // double-clicking this gainSlider will set it to 50.0

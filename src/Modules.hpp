@@ -25,6 +25,8 @@ public:
     {
         (void)inputBuffer;
         
+        // This could be more efficient by making AUDIO_FORMAT_TYPE a fixed point value 
+        // and number of frames a power of 2...
         AUDIO_FORMAT_TYPE increment = gain_.load() - oldGain_;
         if (increment != 0.f)
             increment /= numFrames;
@@ -82,21 +84,51 @@ public:
 
 class SineWaveform : public SawWaveform
 {
+private: 
+    float Fs_;
+    float freq_;
+    std::atomic<float> phaseInc_;
+    float oldPhaseInc_;
+
 public:
-    SineWaveform(unsigned numChannels) : SawWaveform(numChannels) {}
+    SineWaveform(unsigned numChannels, unsigned sampleRate) : 
+        SawWaveform(numChannels)
+        , Fs_{sampleRate * 1.f}
+        , freq_{1000.f} 
+    {    
+        update(freq_);
+        oldPhaseInc_ = phaseInc_.load();
+    }
 
     void process(AUDIO_FORMAT_TYPE *outputBuffer, AUDIO_FORMAT_TYPE *inputBuffer, unsigned numFrames)
     {
         (void)inputBuffer;
+        float incrementInc = phaseInc_.load() - oldPhaseInc_;
+        if (incrementInc != 0)
+            incrementInc /= numFrames;
+
         for (unsigned i = 0; i < numFrames; i++)
         {
             for (unsigned j = 0; j < nChans_; j++)
             {
                 *outputBuffer++ = (AUDIO_FORMAT_TYPE)(sin(lastValues_[j] * M_PI) * SCALE * 0.5f);
-                lastValues_[j] += BASE_RATE * (j + 1 + (j * 0.1f));
+
+                lastValues_[j] += oldPhaseInc_;
                 if (lastValues_[j] >= 1.f)
                     lastValues_[j] -= 2.f;
             }
+
+            // Ensure the new value is smoothly updated
+            oldPhaseInc_ += incrementInc;
         }
+
+        oldPhaseInc_ = phaseInc_.load();
+    }
+
+    void update(float freq)
+    {
+        freq = std::min(freq, 10000.f);
+        freq_ = std::max(freq, 0.f);
+        phaseInc_.store( freq_ / Fs_);
     }
 };

@@ -28,6 +28,7 @@ private:
     //==============================================================================
     // Your private member variables go here...
     //SlidersPage sliders;
+    juce::Slider freqSlider;
     juce::Slider gainSlider;
 
     //std::shared_ptr<SawWaveform> saw;
