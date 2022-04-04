@@ -12,36 +12,47 @@ class Gain : public AudioModule
 {
 private:
     std::atomic<AUDIO_FORMAT_TYPE> gain_;
-    AUDIO_FORMAT_TYPE oldGain_;
+    AUDIO_FORMAT_TYPE currentGain_;
 
 public:
     Gain(unsigned numChannels, AUDIO_FORMAT_TYPE g) : 
         AudioModule{numChannels}, 
         gain_{g},
-        oldGain_{g}
+        currentGain_{g}
     { }
 
     void process(AUDIO_FORMAT_TYPE *outputBuffer, AUDIO_FORMAT_TYPE *inputBuffer, unsigned numFrames)
     {
         (void)inputBuffer;
         
-        // This could be more efficient by making AUDIO_FORMAT_TYPE a fixed point value 
-        // and number of frames a power of 2...
-        AUDIO_FORMAT_TYPE increment = gain_.load() - oldGain_;
-        if (increment != 0.f)
-            increment /= numFrames;
-
-        for (unsigned i = 0; i < numFrames; i++)
+        auto newGain = gain_.load();
+        if (newGain != currentGain_)
         {
-            for (unsigned j=0; j<nChans_; j++) {
-                *outputBuffer++ = oldGain_ * (*inputBuffer++);
+            // If there's been a change to the gain, update it here.
+            // This is a very simple case but is the model used by the JUCE tutorial
+            // here: 
+            // https://docs.juce.com/master/tutorial_sine_synth.html
+            auto increment = (newGain - currentGain_) / numFrames;
+            for (unsigned i = 0; i < numFrames; i++)
+            {
+                for (unsigned j=0; j<nChans_; j++) {
+                    *outputBuffer++ = currentGain_ * (*inputBuffer++);
+                }
+
+                currentGain_ += increment;
             }
 
-            oldGain_ += increment;
+            currentGain_ = newGain;
         }
-
-        // Account for any floating point rounding issues
-        oldGain_ = gain_.load();
+        else
+        {
+            for (unsigned i = 0; i < numFrames; i++)
+            {
+                for (unsigned j=0; j<nChans_; j++) {
+                    *outputBuffer++ = currentGain_ * (*inputBuffer++);
+                }
+            }
+        }
     }
 
     void update(AUDIO_FORMAT_TYPE g)
@@ -88,7 +99,7 @@ private:
     float Fs_;
     float freq_;
     std::atomic<float> phaseInc_;
-    float oldPhaseInc_;
+    float currentPhaseInc_;
 
 public:
     SineWaveform(unsigned numChannels, unsigned sampleRate) : 
@@ -97,32 +108,46 @@ public:
         , freq_{1000.f} 
     {    
         update(freq_);
-        oldPhaseInc_ = phaseInc_.load();
+        currentPhaseInc_ = phaseInc_.load();
     }
 
     void process(AUDIO_FORMAT_TYPE *outputBuffer, AUDIO_FORMAT_TYPE *inputBuffer, unsigned numFrames)
     {
         (void)inputBuffer;
-        float incrementInc = phaseInc_.load() - oldPhaseInc_;
-        if (incrementInc != 0)
-            incrementInc /= numFrames;
 
-        for (unsigned i = 0; i < numFrames; i++)
+        auto newPhaseInc = phaseInc_.load();
+        if (newPhaseInc != currentPhaseInc_)
         {
-            for (unsigned j = 0; j < nChans_; j++)
+             // New phase increment
+            float incrementInc = (phaseInc_.load() - currentPhaseInc_) / numFrames;
+            
+            for (unsigned i = 0; i < numFrames; i++)
             {
-                *outputBuffer++ = (AUDIO_FORMAT_TYPE)(sin(lastValues_[j] * M_PI) * SCALE * 0.5f);
-
-                lastValues_[j] += oldPhaseInc_;
-                if (lastValues_[j] >= 1.f)
-                    lastValues_[j] -= 2.f;
+                for (unsigned j = 0; j < nChans_; j++)
+                {
+                    *outputBuffer++ = (AUDIO_FORMAT_TYPE)(sin(lastValues_[j] * M_PI) * SCALE * 0.5f);
+                    lastValues_[j] += currentPhaseInc_;
+                    if (lastValues_[j] >= 1.f)
+                        lastValues_[j] -= 2.f;
+                }
+                currentPhaseInc_ += incrementInc;
             }
 
-            // Ensure the new value is smoothly updated
-            oldPhaseInc_ += incrementInc;
+            currentPhaseInc_ = newPhaseInc;
         }
-
-        oldPhaseInc_ = phaseInc_.load();
+        else
+        {
+            for (unsigned i = 0; i < numFrames; i++)
+            {
+                for (unsigned j = 0; j < nChans_; j++)
+                {
+                    *outputBuffer++ = (AUDIO_FORMAT_TYPE)(sin(lastValues_[j] * M_PI) * SCALE * 0.5f);
+                    lastValues_[j] += currentPhaseInc_;
+                    if (lastValues_[j] >= 1.f)
+                        lastValues_[j] -= 2.f;
+                }
+            }               
+        }
     }
 
     void update(float freq)

@@ -110,3 +110,4 @@ target_link_libraries(GuiAppExample
 
 
 add_subdirectory(libs/AudioEngine)
+add_subdirectory(test)
